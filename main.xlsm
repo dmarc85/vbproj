@@ -10,26 +10,27 @@ Sub UpdateDatabase(TargetCell As Range)
     Dim sDBLoc As String
     Dim tblName As String
     Dim fieldName As String
+    Dim bizDate As Variant
 
     ' Define the database location and table name
     sDBLoc = Environ("USERPROFILE") & "\OneDrive\Desktop\PracticeDB.accdb"
     tblName = "Sales"
 
     ' Determine the field name based on the column header of the TargetCell
-    fieldName = Me.Cells(1, TargetCell.Column).Value ' Headers are in row 1
+    fieldName = Me.Cells(1, TargetCell.Column).Value ' Assuming headers are in row 1
+
+    ' Assuming the 'BizDate' is in the first column and is the unique identifier
+    bizDate = TargetCell.Worksheet.Cells(TargetCell.Row, 1).Value ' Get the BizDate
 
     ' Create and open ADODB connection
     Set conn = CreateObject("ADODB.Connection")
     conn.Open "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" & sDBLoc
 
-    ' Assuming the first column in Excel sheet contains the unique ID
-    Dim uniqueID As String
-    uniqueID = TargetCell.Worksheet.Cells(TargetCell.Row, 1).Value ' Adjust the column index as needed
-
-    ' Open the recordset with a query that selects the specific record
+    ' Construct SQL query to find the correct record based on BizDate
     Dim sqlQuery As String
-    sqlQuery = "SELECT * FROM " & tblName & " WHERE YourUniqueIDField = '" & uniqueID & "'" ' Adjust field name and data type
+    sqlQuery = "SELECT * FROM " & tblName & " WHERE BizDate = #" & Format(bizDate, "mm/dd/yyyy") & "#"
 
+    ' Open the recordset
     Set rs = CreateObject("ADODB.Recordset")
     rs.Open sqlQuery, conn, adOpenDynamic, adLockOptimistic
 
