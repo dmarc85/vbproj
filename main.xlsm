@@ -1,34 +1,39 @@
 Private Sub Worksheet_Change(ByVal Target As Range)
-    ' Check if the change is within a specific row range
-    If Not Intersect(Target, Me.Rows("2:100")) Is Nothing Then ' Adjust row range as needed
-        ' Call the function to update the database
-        UpdateDatabase Target
+    ' Check if the change is in Column C
+    If Not Intersect(Target, Me.Columns("C")) Is Nothing Then
+        ' Check if the changed cell is AMGuestCount
+        If Me.Cells(Target.Row, 1).Value = "AMGuestCount" Then
+            ' Call the function to update all fields in the database
+            UpdateAllFields Target
+        End If
     End If
 End Sub
-Sub UpdateDatabase(TargetCell As Range)
+
+Sub UpdateAllFields(TargetCell As Range)
+    On Error GoTo ErrorHandler
+
     Dim conn As Object, rs As Object
     Dim sDBLoc As String
     Dim tblName As String
     Dim fieldName As String
-    Dim bizDate As Variant
+    Dim fieldValue As Variant
+    Dim uniqueID As Variant
+    Dim i As Integer
 
     ' Define the database location and table name
     sDBLoc = Environ("USERPROFILE") & "\OneDrive\Desktop\PracticeDB.accdb"
     tblName = "Sales"
 
-    ' Determine the field name based on the column header of the TargetCell
-    fieldName = Me.Cells(1, TargetCell.Column).Value ' Assuming headers are in row 1
-
-    ' Assuming the 'BizDate' is in the first column and is the unique identifier
-    bizDate = TargetCell.Worksheet.Cells(TargetCell.Row, 1).Value ' Get the BizDate
+    ' Find the unique identifier (e.g., BizDate) in a specific row
+    uniqueID = Me.Cells(2, 3).Value ' Assuming BizDate is in row 2, column C
 
     ' Create and open ADODB connection
     Set conn = CreateObject("ADODB.Connection")
     conn.Open "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" & sDBLoc
 
-    ' Construct SQL query to find the correct record based on BizDate
+    ' Construct SQL query to find the correct record based on the unique identifier
     Dim sqlQuery As String
-    sqlQuery = "SELECT * FROM " & tblName & " WHERE BizDate = #" & Format(bizDate, "mm/dd/yyyy") & "#"
+    sqlQuery = "SELECT * FROM " & tblName & " WHERE BizDate = #" & Format(uniqueID, "yyyy-mm-dd") & "#"
 
     ' Open the recordset
     Set rs = CreateObject("ADODB.Recordset")
@@ -36,7 +41,12 @@ Sub UpdateDatabase(TargetCell As Range)
 
     ' Check if the recordset is not empty
     If Not rs.EOF Then
-        rs.Fields(fieldName).Value = TargetCell.Value
+        ' Loop through each field in Excel and update corresponding field in Access
+        For i = 2 To 6 ' Assuming fields are from row 2 to row 6
+            fieldName = Me.Cells(i, 1).Value ' Field name is in column A
+            fieldValue = Me.Cells(i, 3).Value ' Field value is in column C
+            rs.Fields(fieldName).Value = fieldValue
+        Next i
         rs.Update
     End If
 
@@ -45,4 +55,18 @@ Sub UpdateDatabase(TargetCell As Range)
     Set rs = Nothing
     conn.Close
     Set conn = Nothing
+
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "An error occurred: " & Err.Description, vbCritical, "Error"
+    ' Additional cleanup if necessary
+    If Not rs Is Nothing Then
+        If rs.State = adStateOpen Then rs.Close
+        Set rs = Nothing
+    End If
+    If Not conn Is Nothing Then
+        If conn.State = adStateOpen Then conn.Close
+        Set conn = Nothing
+    End If
 End Sub
