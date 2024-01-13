@@ -16,21 +16,28 @@ Sub UpdateDatabase(TargetCell As Range)
     tblName = "Sales"
 
     ' Determine the field name based on the column header of the TargetCell
-    fieldName = Me.Cells(1, TargetCell.Column).Value ' Assuming headers are in row 1
+    fieldName = Me.Cells(1, TargetCell.Column).Value ' Headers are in row 1
 
     ' Create and open ADODB connection
     Set conn = CreateObject("ADODB.Connection")
     conn.Open "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" & sDBLoc
 
-    ' Create and open recordset
-    Set rs = CreateObject("ADODB.Recordset")
-    rs.Open tblName, conn, adOpenDynamic, adLockOptimistic
+    ' Assuming the first column in Excel sheet contains the unique ID
+    Dim uniqueID As String
+    uniqueID = TargetCell.Worksheet.Cells(TargetCell.Row, 1).Value ' Adjust the column index as needed
 
-    ' Update the specific field in the recordset
-    ' Add logic to find the correct record to update, e.g., based on a key
-    rs.MoveFirst ' Modify this to locate the correct record
-    rs.Fields(fieldName).Value = TargetCell.Value
-    rs.Update
+    ' Open the recordset with a query that selects the specific record
+    Dim sqlQuery As String
+    sqlQuery = "SELECT * FROM " & tblName & " WHERE YourUniqueIDField = '" & uniqueID & "'" ' Adjust field name and data type
+
+    Set rs = CreateObject("ADODB.Recordset")
+    rs.Open sqlQuery, conn, adOpenDynamic, adLockOptimistic
+
+    ' Check if the recordset is not empty
+    If Not rs.EOF Then
+        rs.Fields(fieldName).Value = TargetCell.Value
+        rs.Update
+    End If
 
     ' Clean up
     rs.Close
