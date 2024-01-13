@@ -1,0 +1,40 @@
+Private Sub Worksheet_Change(ByVal Target As Range)
+    ' Check if the change is within a specific row range
+    If Not Intersect(Target, Me.Rows("2:100")) Is Nothing Then ' Adjust row range as needed
+        ' Call the function to update the database
+        UpdateDatabase Target
+    End If
+End Sub
+Sub UpdateDatabase(TargetCell As Range)
+    Dim conn As Object, rs As Object
+    Dim sDBLoc As String
+    Dim tblName As String
+    Dim fieldName As String
+
+    ' Define the database location and table name
+    sDBLoc = Environ("USERPROFILE") & "\OneDrive\Desktop\PracticeDB.accdb"
+    tblName = "Sales"
+
+    ' Determine the field name based on the column header of the TargetCell
+    fieldName = Me.Cells(1, TargetCell.Column).Value ' Assuming headers are in row 1
+
+    ' Create and open ADODB connection
+    Set conn = CreateObject("ADODB.Connection")
+    conn.Open "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" & sDBLoc
+
+    ' Create and open recordset
+    Set rs = CreateObject("ADODB.Recordset")
+    rs.Open tblName, conn, adOpenDynamic, adLockOptimistic
+
+    ' Update the specific field in the recordset
+    ' Add logic to find the correct record to update, e.g., based on a key
+    rs.MoveFirst ' Modify this to locate the correct record
+    rs.Fields(fieldName).Value = TargetCell.Value
+    rs.Update
+
+    ' Clean up
+    rs.Close
+    Set rs = Nothing
+    conn.Close
+    Set conn = Nothing
+End Sub
