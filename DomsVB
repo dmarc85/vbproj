@@ -1,0 +1,110 @@
+Sub WriteRecord()
+    On Error GoTo ErrorHandler
+
+    Dim conn As Object, rs As Object
+    Dim sDBLoc As String
+    Dim tblName As String
+    Dim fieldName As String
+    Dim fieldValue As Variant
+    Dim uniqueID As Variant
+    Dim i As Integer
+    Dim cStop As Double
+        cStop = WSExchange.Rows(1).Find("*", lookat:=xlWhole, searchdirection:=xlPrevious).Column
+        
+    
+
+    ' Define the database location and table name
+    'sDBLoc = Environ("USERPROFILE") & "\OneDrive\Desktop\PracticeDB.accdb"
+    sDBLoc = Application.ThisWorkbook.Path & "\PCGSales.accdb"
+    tblName = "PCGSales"
+
+    ' Find the unique identifier (e.g., BizDate) in a specific row
+    uniqueID = WSExchange.Cells(2, 1).Value  ' Assuming BizDate is in row 2, column C
+
+    ' Create and open ADODB connection
+    Set conn = CreateObject("ADODB.Connection")
+    conn.Open "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" & sDBLoc
+
+    ' Construct SQL query to find the correct record based on the unique identifier
+    Dim sqlQuery As String
+    sqlQuery = "SELECT * FROM " & tblName & " WHERE Date = #" & Format(uniqueID, "m/d/yyyy") & "#"
+
+    ' Open the recordset
+    Set rs = CreateObject("ADODB.Recordset")
+    rs.Open sqlQuery, conn, adOpenDynamic, adLockOptimistic
+
+    ' Check if the recordset is not empty
+    If Not rs.EOF Then
+        ' Loop through each field in Excel and update corresponding field in Access
+        For i = 2 To cStop ' Assuming fields are from row 2 to row 6
+            fieldName = WSExchange.Cells(1, i).Value ' Field name is in column A
+            fieldValue = WSExchange.Cells(2, i).Value ' Field value is in column C
+            rs.Fields(fieldName).Value = fieldValue
+        Next i
+        rs.Update
+    End If
+
+    ' Clean up
+    rs.Close
+    Set rs = Nothing
+    conn.Close
+    Set conn = Nothing
+
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "An error occurred: " & Err.Description, vbCritical, "Error"
+    ' Additional cleanup if necessary
+    If Not rs Is Nothing Then
+        If rs.State = adStateOpen Then rs.Close
+        Set rs = Nothing
+    End If
+    If Not conn Is Nothing Then
+        If conn.State = adStateOpen Then conn.Close
+        Set conn = Nothing
+    End If
+End Sub
+
+
+
+Public Sub ReadRecord()
+
+Dim tblName As String
+    tblName = "PCGSales"
+Dim sDBLoc As String
+    sDBLoc = Application.ThisWorkbook.Path & "\PCGSales.accdb"
+Dim rWrite As Double
+    rWrite = 3
+Dim Connect As String, Source As String
+Dim Connection As ADODB.Connection
+Dim Recordset As ADODB.Recordset
+
+Dim uniqueID As String
+
+Range("=rDBRead").Value = ""
+
+'Declaring the database connection
+Set Connection = New ADODB.Connection
+Set Recordset = New ADODB.Recordset
+          
+Connect = "Provider=Microsoft.ACE.OLEDB.12.0; Data Source=" & sDBLoc
+Connection.Open ConnectionString:=Connect
+uniqueID = WSExchange.Cells(rWrite, 1).Value
+Source = "SELECT * FROM " & tblName & " WHERE Date = #" & Format(uniqueID, "m/d/yyyy") & "#"
+        
+Do Until WSExchange.Cells(rWrite, 1) = ""
+    uniqueID = WSExchange.Cells(rWrite, 1).Value
+    Source = "SELECT * FROM " & tblName & " WHERE Date = #" & Format(uniqueID, "m/d/yyyy") & "#"
+    Recordset.Open Source:=Source, ActiveConnection:=Connection
+    WSExchange.Cells(rWrite, 1).CopyFromRecordset Recordset
+    Recordset.Close
+    rWrite = rWrite + 1
+Loop
+
+Set Recordset = Nothing
+Connection.Close
+Set Connection = Nothing
+
+Range("=rDBRead") = Range("=rDBRead").Value
+
+End Sub
